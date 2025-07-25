@@ -68,8 +68,9 @@ class ImportParkUpFrontEvents extends Command
                 continue;
             }
 
-            $startTime = Carbon::parse($eventData['start_time']);
-            $endTime = Carbon::parse($eventData['end_time']);
+            // Parse times in Central Time (Dallas timezone)
+            $startTime = Carbon::parse($eventData['start_time'], 'America/Chicago');
+            $endTime = Carbon::parse($eventData['end_time'], 'America/Chicago');
 
             if ($skipPast && $endTime->isPast()) {
                 $skipped++;

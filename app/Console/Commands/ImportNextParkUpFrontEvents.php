@@ -8,6 +8,7 @@ use App\Models\Event;
 use Carbon\Carbon;
 use App\Mail\NewEventImported;
 use Illuminate\Support\Facades\Mail;
+use App\Models\User;
 
 class ImportNextParkUpFrontEvents extends Command
 {
@@ -60,17 +61,46 @@ class ImportNextParkUpFrontEvents extends Command
             // Reset counter when we find an event
             $consecutiveEmpty = 0;
             
+            // Get or create import user
+            $importUser = User::firstOrCreate(
+                ['email' => 'import@parkupfront.com'],
+                ['name' => 'ParkUpFront Import', 'password' => bcrypt(uniqid())]
+            );
+            
+            // Parse times in Central Time (Dallas timezone)
+            $startTime = Carbon::parse($eventData['start_time'], 'America/Chicago');
+            $endTime = Carbon::parse($eventData['end_time'], 'America/Chicago');
+            
+            // Prepare event attributes
+            $eventAttributes = [
+                'name' => $eventData['name'],
+                'description' => $eventData['summary'] ?? null,
+                'address' => $eventData['address'] ?? 'TBD',
+                'city' => $service->getCityName($eventData['city_id']),
+                'state' => $service->getStateFromCity($eventData['city_id']),
+                'zip' => '75201', // Default Dallas zip
+                'start_time' => $startTime,
+                'end_time' => $endTime,
+                'cost' => $eventData['cost'] ?? 0,
+                'spots' => $eventData['unlimited_spots'] ? null : $eventData['spots'],
+                'unlimited_spots' => $eventData['unlimited_spots'],
+                'image' => $eventData['default_image'],
+                'imported_from' => 'parkupfront',
+                'external_id' => $currentId,
+                'user_id' => $importUser->id,
+            ];
+            
             // Check if event already exists
             $existingEvent = Event::where('external_id', $currentId)
                 ->where('imported_from', 'parkupfront')
                 ->first();
             
             if ($existingEvent) {
-                $existingEvent->update($eventData);
+                $existingEvent->update($eventAttributes);
                 $totalUpdated++;
                 $this->info("Updated: {$eventData['name']} (ID: {$currentId})");
             } else {
-                $newEvent = Event::create($eventData);
+                $newEvent = Event::create($eventAttributes);
                 $totalImported++;
                 $this->info("Imported: {$eventData['name']} (ID: {$currentId})");
                 

@@ -73,7 +73,7 @@ const EventDetail = () => {
                     <img
                         src={event.image.startsWith('http') ? event.image : `/storage/${event.image}`}
                         alt={event.name}
-                        className="w-full h-96 object-cover"
+                        className="w-full"
                     />
                 )}
                 

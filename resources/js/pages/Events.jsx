@@ -1,28 +1,77 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
+import TimelineView from '../components/TimelineView';
 
 const Events = () => {
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [pagination, setPagination] = useState({});
-    const [filters, setFilters] = useState({
-        startDate: '',
-        endDate: '',
-        dateFilter: 'all', // all, today, tomorrow, this-week, this-weekend, fri-sat-sun, sat-sun, this-month
+    const scrollPositionRestored = useRef(false);
+    
+    // Load saved state from localStorage
+    const [viewMode, setViewMode] = useState(() => {
+        return localStorage.getItem('eventsViewMode') || 'list';
+    });
+    
+    const [filters, setFilters] = useState(() => {
+        const savedFilters = localStorage.getItem('eventsFilters');
+        if (savedFilters) {
+            try {
+                return JSON.parse(savedFilters);
+            } catch (e) {
+                console.error('Failed to parse saved filters:', e);
+            }
+        }
+        return {
+            startDate: '',
+            endDate: '',
+            dateFilter: 'all',
+        };
     });
 
     useEffect(() => {
         fetchEvents();
     }, [filters]);
 
-    const fetchEvents = async (page = 1) => {
+    // Save view mode to localStorage when it changes
+    useEffect(() => {
+        localStorage.setItem('eventsViewMode', viewMode);
+    }, [viewMode]);
+
+    // Save filters to localStorage when they change
+    useEffect(() => {
+        localStorage.setItem('eventsFilters', JSON.stringify(filters));
+    }, [filters]);
+
+    // Restore scroll position when events are loaded
+    useEffect(() => {
+        if (!loading && events.length > 0 && !scrollPositionRestored.current) {
+            const savedScrollPosition = sessionStorage.getItem('eventsScrollPosition');
+            if (savedScrollPosition) {
+                window.scrollTo(0, parseInt(savedScrollPosition));
+                sessionStorage.removeItem('eventsScrollPosition');
+            }
+            scrollPositionRestored.current = true;
+        }
+    }, [loading, events]);
+
+    // Save scroll position before navigating away
+    const handleEventClick = (e) => {
+        sessionStorage.setItem('eventsScrollPosition', window.scrollY.toString());
+    };
+
+    const fetchEvents = async (page = null) => {
         try {
             setLoading(true);
             
+            // Use saved page or provided page or default to 1
+            const savedPage = sessionStorage.getItem('eventsCurrentPage');
+            const currentPage = page || (savedPage ? parseInt(savedPage) : 1);
+            
             // Build query params
             const params = new URLSearchParams();
-            params.append('page', page);
+            params.append('page', currentPage);
             
             if (filters.dateFilter === 'custom' && filters.startDate) {
                 params.append('start_date', filters.startDate);
@@ -40,6 +89,9 @@ const Events = () => {
                 lastPage: response.data.last_page,
                 total: response.data.total,
             });
+            
+            // Save current page
+            sessionStorage.setItem('eventsCurrentPage', response.data.current_page.toString());
         } catch (error) {
             console.error('Error fetching events:', error);
         } finally {
@@ -54,6 +106,8 @@ const Events = () => {
             startDate: '',
             endDate: '',
         });
+        // Reset to page 1 when filter changes
+        sessionStorage.removeItem('eventsCurrentPage');
     };
 
     const handleCustomDateChange = (field, value) => {
@@ -62,6 +116,8 @@ const Events = () => {
             dateFilter: 'custom',
             [field]: value,
         });
+        // Reset to page 1 when filter changes
+        sessionStorage.removeItem('eventsCurrentPage');
     };
 
     const formatDate = (dateString) => {
@@ -119,6 +175,45 @@ const Events = () => {
 
     const dateFilterOptions = getDateFilterOptions();
 
+    // Group events by day
+    const groupEventsByDay = (events) => {
+        const grouped = {};
+        events.forEach(event => {
+            const date = new Date(event.start_time);
+            const dateKey = date.toDateString();
+            if (!grouped[dateKey]) {
+                grouped[dateKey] = {
+                    date: date,
+                    events: []
+                };
+            }
+            grouped[dateKey].events.push(event);
+        });
+        return Object.values(grouped).sort((a, b) => a.date - b.date);
+    };
+
+    const groupedEvents = groupEventsByDay(events);
+
+    // Format day header
+    const formatDayHeader = (date) => {
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        
+        if (date.toDateString() === today.toDateString()) {
+            return 'Today';
+        } else if (date.toDateString() === tomorrow.toDateString()) {
+            return 'Tomorrow';
+        } else {
+            return date.toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+                year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
+            });
+        }
+    };
+
     if (loading && events.length === 0) {
         return (
             <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -128,10 +223,44 @@ const Events = () => {
     }
 
     return (
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className={`${viewMode === 'timeline' ? 'max-w-6xl' : 'max-w-3xl'} mx-auto px-4 sm:px-6 lg:px-8 py-8`}>
             <div className="mb-8">
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Upcoming Car Events</h1>
                 <p className="mt-2 text-lg text-gray-600 dark:text-gray-400">Discover car meets and events in your area</p>
+                
+                {/* View Mode Toggle */}
+                <div className="mt-4 flex gap-2">
+                    <button
+                        onClick={() => setViewMode('list')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                            viewMode === 'list'
+                                ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900'
+                                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                        }`}
+                    >
+                        <span className="flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                            List View
+                        </span>
+                    </button>
+                    <button
+                        onClick={() => setViewMode('timeline')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                            viewMode === 'timeline'
+                                ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900'
+                                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                        }`}
+                    >
+                        <span className="flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Timeline View
+                        </span>
+                    </button>
+                </div>
             </div>
 
             {/* Date Filters */}
@@ -192,15 +321,30 @@ const Events = () => {
                     <p className="text-xl text-gray-500 dark:text-gray-400">No events found for the selected date range.</p>
                     <p className="mt-2 text-gray-400 dark:text-gray-500">Try selecting a different date range.</p>
                 </div>
+            ) : viewMode === 'timeline' ? (
+                <TimelineView groupedEvents={groupedEvents} onEventClick={handleEventClick} />
             ) : (
                 <>
-                    <div className="space-y-8">
-                        {events.map((event) => (
-                            <Link
-                                key={event.id}
-                                to={`/events/${event.id}`}
-                                className="block bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden"
-                            >
+                    <div className="space-y-12">
+                        {groupedEvents.map((dayGroup) => (
+                            <div key={dayGroup.date.toISOString()}>
+                                {/* Day Header */}
+                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 sticky top-16 bg-gray-50 dark:bg-gray-900 py-3 -mx-4 px-4 z-10 border-b border-gray-200 dark:border-gray-700">
+                                    {formatDayHeader(dayGroup.date)}
+                                    <span className="ml-3 text-sm font-normal text-gray-500 dark:text-gray-400">
+                                        {dayGroup.events.length} event{dayGroup.events.length !== 1 ? 's' : ''}
+                                    </span>
+                                </h2>
+                                
+                                {/* Events for this day */}
+                                <div className="space-y-8">
+                                    {dayGroup.events.map((event) => (
+                                        <Link
+                                            key={event.id}
+                                            to={`/events/${event.id}`}
+                                            onClick={handleEventClick}
+                                            className="block bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden"
+                                        >
                                 {event.image ? (
                                     <img
                                         src={event.image.startsWith('http') ? event.image : `/storage/${event.image}`}
@@ -268,6 +412,9 @@ const Events = () => {
                                     )}
                                 </div>
                             </Link>
+                                    ))}
+                                </div>
+                            </div>
                         ))}
                     </div>
 
