@@ -17,6 +17,7 @@ class FixParkUpFrontTimezones extends Command
     protected $signature = 'events:fix-parkupfront-timezones 
                             {--dry-run : Preview changes without applying them}
                             {--force : Skip confirmation prompt}
+                            {--fix-all : Fix all events without smart detection}
                             {--event-id= : Fix only a specific event by ID}';
 
     /**
@@ -80,19 +81,28 @@ class FixParkUpFrontTimezones extends Command
                     $currentEnd = $event->end_time;
                     
                     // Check if this looks like it needs fixing
-                    // If the hour is between 0-5 UTC, it's likely a morning event that was stored wrong
-                    $startHour = (int) $currentStart->format('H');
                     $needsFix = false;
                     
-                    // Most car events are between 6 AM and 11 PM local time
-                    // In UTC, Dallas morning events (6-11 AM CDT) would be 11 AM - 4 PM UTC
-                    // If we see times like 6-11 AM UTC, they're probably wrong
-                    if ($startHour >= 6 && $startHour <= 11) {
+                    if ($this->option('fix-all')) {
+                        // Fix all events when --fix-all is used
+                        $needsFix = true;
+                    } else if (!$specificEventId) {
+                        // Smart detection: check if the stored UTC time makes sense
+                        // Parse the raw UTC time as if it were Central Time
+                        $testTime = Carbon::createFromFormat('Y-m-d H:i:s', $currentStart->format('Y-m-d H:i:s'), 'America/Chicago');
+                        $testUtc = $testTime->copy()->utc();
+                        
+                        // If converting it changes the time, it needs fixing
+                        if (!$currentStart->eq($testUtc)) {
+                            $needsFix = true;
+                        }
+                    } else {
+                        // Always fix specific event IDs
                         $needsFix = true;
                     }
                     
-                    if (!$needsFix && !$specificEventId) {
-                        $this->line("⏭️  Skipped: {$event->name} - appears to be correct");
+                    if (!$needsFix) {
+                        $this->line("⏭️  Skipped: {$event->name} - already properly converted");
                         $this->line("   Currently: " . $currentStart->copy()->setTimezone('America/Chicago')->format('g:i A T'));
                         $skipped++;
                         continue;

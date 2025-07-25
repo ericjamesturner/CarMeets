@@ -113,25 +113,6 @@ const TimelineView = ({ groupedEvents, onEventClick }) => {
                                 );
                             })}
                         </div>
-                        
-                        {/* Legend */}
-                        {day.events.length > 0 && (
-                            <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                                <div className="flex flex-wrap gap-3 text-sm">
-                                    {day.events.map((event, index) => (
-                                        <div key={event.id} className="flex items-center gap-2">
-                                            <div className={`w-3 h-3 rounded ${getEventColor(index)}`}></div>
-                                            <span className="text-gray-700 dark:text-gray-300">{event.name}</span>
-                                            {event.cost > 0 && (
-                                                <span className="text-gray-500 dark:text-gray-400">
-                                                    (${parseFloat(event.cost).toFixed(0)})
-                                                </span>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
             ))}
