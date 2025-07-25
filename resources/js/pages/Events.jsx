@@ -293,7 +293,24 @@ const Events = () => {
             {/* Date Filters */}
             <div className="mb-8 bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Filter by Date</h3>
-                <div className="flex flex-wrap gap-2 mb-4">
+                
+                {/* Mobile dropdown */}
+                <div className="md:hidden">
+                    <select
+                        value={filters.dateFilter}
+                        onChange={(e) => handleDateFilterChange(e.target.value)}
+                        className="w-full px-4 py-2 rounded-md text-sm font-medium bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                        {dateFilterOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                                {option.label}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+                
+                {/* Desktop buttons */}
+                <div className="hidden md:flex flex-wrap gap-2">
                     {dateFilterOptions.map((option) => (
                         <button
                             key={option.value}
@@ -310,7 +327,7 @@ const Events = () => {
                 </div>
 
                 {filters.dateFilter === 'custom' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 Start Date

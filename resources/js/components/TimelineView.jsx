@@ -5,6 +5,15 @@ const TimelineView = ({ groupedEvents, onEventClick }) => {
     // Generate hour labels from 6 AM to 11 PM
     const hours = Array.from({ length: 18 }, (_, i) => i + 6);
     
+    // Check if mobile
+    const [isMobile, setIsMobile] = React.useState(window.innerWidth < 768);
+    
+    React.useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+    
     // Calculate event position and width on timeline
     const getEventPosition = (event) => {
         const start = new Date(event.start_time);
@@ -59,6 +68,60 @@ const TimelineView = ({ groupedEvents, onEventClick }) => {
         });
     };
 
+    // Mobile vertical timeline
+    if (isMobile) {
+        return (
+            <div className="space-y-6">
+                {groupedEvents.map((day) => (
+                    <div key={day.date.toISOString()} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                            {day.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                        </h2>
+                        
+                        {/* Vertical timeline for mobile */}
+                        <div className="relative">
+                            <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-300 dark:bg-gray-600"></div>
+                            
+                            <div className="space-y-4">
+                                {day.events.sort((a, b) => new Date(a.start_time) - new Date(b.start_time)).map((event, index) => (
+                                    <Link
+                                        key={event.id}
+                                        to={`/events/${event.id}`}
+                                        onClick={onEventClick}
+                                        className="relative flex items-start ml-10 group"
+                                    >
+                                        {/* Timeline dot */}
+                                        <div className={`absolute -left-8 w-4 h-4 rounded-full ${getEventColor(index)} ring-4 ring-white dark:ring-gray-800`}></div>
+                                        
+                                        {/* Event card */}
+                                        <div className="flex-1 bg-gray-50 dark:bg-gray-700 rounded-lg p-3 hover:shadow-md transition-shadow">
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex-1">
+                                                    <h3 className="font-semibold text-gray-900 dark:text-white text-sm">
+                                                        {event.name}
+                                                    </h3>
+                                                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                                        {formatTime(event.start_time)} - {formatTime(event.end_time)}
+                                                    </p>
+                                                </div>
+                                                {event.cost > 0 && (
+                                                    <span className="text-xs font-semibold text-green-600 dark:text-green-400">
+                                                        ${parseFloat(event.cost).toFixed(0)}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    }
+    
+    // Desktop horizontal timeline
     return (
         <div className="space-y-8">
             {groupedEvents.map((day) => (
@@ -68,9 +131,9 @@ const TimelineView = ({ groupedEvents, onEventClick }) => {
                     </h2>
                     
                     {/* Timeline Grid */}
-                    <div className="relative">
+                    <div className="relative overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
                         {/* Hour markers */}
-                        <div className="flex relative h-2 mb-2">
+                        <div className="flex relative h-2 mb-2 min-w-[800px]">
                             {hours.map((hour) => (
                                 <div key={hour} className="flex-1 relative">
                                     <div className="absolute left-0 -top-6 text-xs text-gray-500 dark:text-gray-400">
@@ -81,7 +144,7 @@ const TimelineView = ({ groupedEvents, onEventClick }) => {
                         </div>
                         
                         {/* Grid lines */}
-                        <div className="flex relative h-full">
+                        <div className="flex relative h-full min-w-[800px]">
                             {hours.map((hour) => (
                                 <div key={hour} className="flex-1 border-l border-gray-200 dark:border-gray-700 first:border-l-0"></div>
                             ))}
@@ -89,7 +152,7 @@ const TimelineView = ({ groupedEvents, onEventClick }) => {
                         </div>
                         
                         {/* Events */}
-                        <div className="relative mt-4 space-y-2">
+                        <div className="relative mt-4 space-y-2 min-w-[800px]">
                             {day.events.map((event, index) => {
                                 const position = getEventPosition(event);
                                 return (
@@ -107,7 +170,6 @@ const TimelineView = ({ groupedEvents, onEventClick }) => {
                                             <div className="text-xs opacity-90">
                                                 {formatTime(event.start_time)} - {formatTime(event.end_time)}
                                             </div>
-                                            <div className="text-xs opacity-75 truncate">{event.city}, {event.state}</div>
                                         </div>
                                     </Link>
                                 );
