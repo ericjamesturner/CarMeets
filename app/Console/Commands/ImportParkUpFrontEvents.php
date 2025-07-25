@@ -68,9 +68,9 @@ class ImportParkUpFrontEvents extends Command
                 continue;
             }
 
-            // Parse times in Central Time (Dallas timezone)
-            $startTime = Carbon::parse($eventData['start_time'], 'America/Chicago');
-            $endTime = Carbon::parse($eventData['end_time'], 'America/Chicago');
+            // Parse times in Central Time (Dallas timezone) and convert to UTC
+            $startTime = Carbon::parse($eventData['start_time'], 'America/Chicago')->utc();
+            $endTime = Carbon::parse($eventData['end_time'], 'America/Chicago')->utc();
 
             if ($skipPast && $endTime->isPast()) {
                 $skipped++;

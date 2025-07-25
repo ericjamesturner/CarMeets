@@ -67,9 +67,9 @@ class ImportNextParkUpFrontEvents extends Command
                 ['name' => 'ParkUpFront Import', 'password' => bcrypt(uniqid())]
             );
             
-            // Parse times in Central Time (Dallas timezone)
-            $startTime = Carbon::parse($eventData['start_time'], 'America/Chicago');
-            $endTime = Carbon::parse($eventData['end_time'], 'America/Chicago');
+            // Parse times in Central Time (Dallas timezone) and convert to UTC
+            $startTime = Carbon::parse($eventData['start_time'], 'America/Chicago')->utc();
+            $endTime = Carbon::parse($eventData['end_time'], 'America/Chicago')->utc();
             
             // Prepare event attributes
             $eventAttributes = [
