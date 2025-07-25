@@ -1,20 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import TimelineView from '../components/TimelineView';
 
 const Events = () => {
+    const [searchParams, setSearchParams] = useSearchParams();
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [pagination, setPagination] = useState({});
     const scrollPositionRestored = useRef(false);
     
-    // Load saved state from localStorage
+    // Initialize from URL params first, then localStorage
     const [viewMode, setViewMode] = useState(() => {
-        return localStorage.getItem('eventsViewMode') || 'list';
+        return searchParams.get('view') || localStorage.getItem('eventsViewMode') || 'list';
     });
     
     const [filters, setFilters] = useState(() => {
+        // Check URL params first
+        const urlDateFilter = searchParams.get('filter');
+        if (urlDateFilter) {
+            return {
+                startDate: '',
+                endDate: '',
+                dateFilter: urlDateFilter,
+            };
+        }
+        
+        // Otherwise use saved filters
         const savedFilters = localStorage.getItem('eventsFilters');
         if (savedFilters) {
             try {
@@ -34,14 +46,28 @@ const Events = () => {
         fetchEvents();
     }, [filters]);
 
-    // Save view mode to localStorage when it changes
+    // Save view mode to localStorage and URL when it changes
     useEffect(() => {
         localStorage.setItem('eventsViewMode', viewMode);
+        const newParams = new URLSearchParams(searchParams);
+        if (viewMode !== 'list') {
+            newParams.set('view', viewMode);
+        } else {
+            newParams.delete('view');
+        }
+        setSearchParams(newParams, { replace: true });
     }, [viewMode]);
 
-    // Save filters to localStorage when they change
+    // Save filters to localStorage and URL when they change
     useEffect(() => {
         localStorage.setItem('eventsFilters', JSON.stringify(filters));
+        const newParams = new URLSearchParams(searchParams);
+        if (filters.dateFilter !== 'all') {
+            newParams.set('filter', filters.dateFilter);
+        } else {
+            newParams.delete('filter');
+        }
+        setSearchParams(newParams, { replace: true });
     }, [filters]);
 
     // Restore scroll position when events are loaded
