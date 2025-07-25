@@ -213,9 +213,16 @@ const Events = () => {
                                     </div>
                                 )}
                                 <div className="p-6 md:p-8">
-                                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                                        {event.name}
-                                    </h2>
+                                    <div className="flex items-start justify-between mb-4">
+                                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                                            {event.name}
+                                        </h2>
+                                        {event.imported_from === 'parkupfront' && (
+                                            <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+                                                ParkUpFront
+                                            </span>
+                                        )}
+                                    </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-600 dark:text-gray-400">
                                         <div className="space-y-2">
                                             <p className="flex items-center">

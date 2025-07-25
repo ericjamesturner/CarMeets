@@ -155,6 +155,11 @@ const EventDetail = () => {
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                             <strong>Hosted by:</strong> {event.user.name}
                         </p>
+                        {event.imported_from === 'parkupfront' && event.external_id && (
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                                <strong>ParkUpFront ID:</strong> {event.external_id}
+                            </p>
+                        )}
                     </div>
                 </div>
             </div>
