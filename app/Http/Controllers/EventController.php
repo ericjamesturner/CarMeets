@@ -89,7 +89,9 @@ class EventController extends Controller
             $query->whereDate('start_time', '<=', $request->end_date);
         }
 
-        $events = $query->paginate(20);
+        // Allow customizable page size, default to 50, max 100
+        $perPage = min($request->get('per_page', 50), 100);
+        $events = $query->paginate($perPage);
 
         return response()->json($events);
     }

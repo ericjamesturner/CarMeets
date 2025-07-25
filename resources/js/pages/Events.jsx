@@ -72,6 +72,7 @@ const Events = () => {
             // Build query params
             const params = new URLSearchParams();
             params.append('page', currentPage);
+            params.append('per_page', '100'); // Request more events per page
             
             if (filters.dateFilter === 'custom' && filters.startDate) {
                 params.append('start_date', filters.startDate);
