@@ -34,39 +34,46 @@ class EventController extends Controller
                     break;
                     
                 case 'this-week':
-                    $startOfWeek = $todayInCentral->copy()->startOfWeek()->utc();
-                    $endOfWeek = $todayInCentral->copy()->endOfWeek()->utc();
+                    // From now until end of week
+                    $startOfWeek = $todayInCentral->copy()->utc();
+                    $endOfWeek = $todayInCentral->copy()->endOfWeek()->endOfDay()->utc();
                     $query->whereBetween('start_time', [$startOfWeek, $endOfWeek]);
                     break;
                     
                 case 'this-month':
-                    $startOfMonth = $todayInCentral->copy()->startOfMonth()->utc();
-                    $endOfMonth = $todayInCentral->copy()->endOfMonth()->utc();
+                    // From now until end of month
+                    $startOfMonth = $todayInCentral->copy()->utc();
+                    $endOfMonth = $todayInCentral->copy()->endOfMonth()->endOfDay()->utc();
                     $query->whereBetween('start_time', [$startOfMonth, $endOfMonth]);
                     break;
                     
                 case 'fri-sat-sun':
                     // Get the next Friday (or today if it's Friday) in Central Time
                     if ($todayInCentral->isFriday()) {
-                        $friday = $todayInCentral->copy();
+                        $friday = $todayInCentral->copy()->startOfDay();
                     } else if ($todayInCentral->isSaturday() || $todayInCentral->isSunday()) {
                         // If today is weekend, get this Friday
-                        $friday = $todayInCentral->copy()->previous('Friday');
+                        $friday = $todayInCentral->copy()->previous('Friday')->startOfDay();
                     } else {
                         // Otherwise get next Friday
-                        $friday = $todayInCentral->copy()->next('Friday');
+                        $friday = $todayInCentral->copy()->next('Friday')->startOfDay();
                     }
+                    // Make sure we include all of Sunday
                     $sundayEnd = $friday->copy()->addDays(2)->endOfDay();
                     $query->whereBetween('start_time', [$friday->utc(), $sundayEnd->utc()]);
                     break;
                     
                 case 'sat-sun':
                     // Get the next Saturday (or today if it's Saturday/Sunday) in Central Time
-                    if ($todayInCentral->isSaturday() || $todayInCentral->isSunday()) {
-                        $saturday = $todayInCentral->copy()->startOfWeek()->addDays(5);
+                    if ($todayInCentral->isSaturday()) {
+                        $saturday = $todayInCentral->copy()->startOfDay();
+                    } else if ($todayInCentral->isSunday()) {
+                        // If today is Sunday, get yesterday (Saturday)
+                        $saturday = $todayInCentral->copy()->previous('Saturday')->startOfDay();
                     } else {
-                        $saturday = $todayInCentral->copy()->next('Saturday');
+                        $saturday = $todayInCentral->copy()->next('Saturday')->startOfDay();
                     }
+                    // Make sure we include all of Sunday
                     $sundayEnd = $saturday->copy()->addDay()->endOfDay();
                     $query->whereBetween('start_time', [$saturday->utc(), $sundayEnd->utc()]);
                     break;
