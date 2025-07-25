@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan make:model:*)",
+      "Bash(php artisan:*)",
+      "Bash(composer:*)",
+      "Bash(mkdir:*)",
+      "Bash(./vendor/bin/pint)",
+      "Bash(./vendor/bin/pint tests/)",
+      "Bash(npm install:*)",
+      "Bash(mv:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(rm:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)"
+    ],
+    "deny": []
+  }
+}

@@ -1,0 +1,395 @@
+# CarMeets - Local Car Event Platform - Project Scope
+
+## Project Overview
+A modern Laravel-based platform for car enthusiasts to discover, create, and share automotive events in their area. The platform will launch with seeded content from existing sources but will focus on user-generated events, community building, and superior user experience.
+
+## Vision
+Create the go-to platform for car enthusiasts to organize and discover local meets, shows, and automotive events with a focus on community, ease of use, and real-time notifications.
+
+## Core Features
+
+### 1. User System
+
+#### User Types
+- **Attendees** - Browse and RSVP to events
+- **Organizers** - Create and manage events
+- **Club Admins** - Manage car club pages and events
+- **Moderators** - Community management
+- **Admin** - Platform management
+
+#### User Features
+- Social login (Google, Facebook, Apple)
+- Profile with garage (list your cars)
+- Follow other users/clubs
+- Event history
+- Reputation/karma system
+- Verification for known organizers
+
+### 2. Event Management
+
+#### Creating Events
+- Simple event creation flow
+- Rich text editor for descriptions
+- Multiple photo uploads
+- Location picker with map
+- Recurring event support
+- Co-hosts and collaborators
+- Event templates for regular meets
+
+#### Event Types
+- Car Meets (casual)
+- Car Shows (formal)
+- Cruises/Drives
+- Track Days
+- Workshops/Tutorials
+- Charity Events
+- Private/Invite-Only
+
+#### Event Features
+- RSVP system with attendee limits
+- Waitlist functionality
+- Comments and discussions
+- Photo galleries from attendees
+- Weather integration
+- Parking information
+- Route planning for cruises
+- Vendor/sponsor sections
+
+### 3. Discovery & Search
+
+#### Browse Events
+- Map view with clusters
+- Calendar view
+- List view with filters
+- "Happening This Weekend"
+- "New This Week"
+- Trending events
+
+#### Smart Filters
+- Distance from user
+- Date/time ranges
+- Event type
+- Car makes/models welcome
+- Free vs paid
+- Indoor/outdoor
+- Family-friendly
+
+#### Search
+- Full-text search
+- Search by car type
+- Search by location
+- Search by organizer/club
+
+### 4. Notifications & Engagement
+
+#### Push Notifications
+- New events in your area
+- RSVP reminders
+- Event updates/changes
+- Comments on your events
+- New followers
+
+#### Email Notifications
+- Weekly digest of upcoming events
+- Event reminders
+- RSVP confirmations
+- Custom alerts for specific clubs/organizers
+
+#### In-App Engagement
+- Like/save events
+- Share to social media
+- Direct messaging
+- Event discussions
+- Photo sharing
+
+### 5. Car Clubs & Communities
+
+#### Club Pages
+- Custom club profile
+- Member management
+- Event calendar
+- Photo galleries
+- Announcements
+- Join requests
+- Club chat/forum
+
+#### Community Features
+- Local area groups
+- Make/model communities
+- Interest groups (JDM, Classic, Euro, etc.)
+- Marketplace for parts/cars
+- Knowledge base/guides
+
+### 6. Mobile Experience
+
+#### Progressive Web App
+- Installable on phones
+- Offline support
+- Push notifications
+- Camera integration
+- GPS for directions
+
+#### Native App Features (Phase 2)
+- Check-in at events
+- QR code tickets
+- Live event updates
+- Augmented reality features
+
+### 7. Platform Philosophy
+
+#### Free Forever
+- No fees for organizers
+- No ticket commissions
+- No premium tiers
+- Community-driven platform
+- Open source potential
+
+#### Sustainability Options (Future)
+- Optional donations/tips
+- Local business sponsorships
+- Non-intrusive ads (maybe)
+- Grants from car communities
+- Merchandise store
+
+### 8. Data Import System (Launch Strategy)
+
+#### Initial Content Seeding
+- Import historical ParkUpFront data
+- Clean and organize imported events
+- Mark as "imported" vs user-created
+- Claim process for organizers
+- Gradual transition to user content
+
+#### Import Features
+- One-time historical import
+- Ongoing monitoring for reference
+- Duplicate detection
+- Data quality scoring
+- Automated categorization
+
+#### ParkUpFront GraphQL API Details
+**Endpoint:** `https://gqlv2.parkupfrontpartners.com/`
+
+**Important Notes:**
+- SSL certificate verification must be disabled (use `verify => false` in Guzzle)
+- All requests are POST with JSON body
+- No authentication required (public API)
+
+**Query Format:**
+```json
+{
+  "operationName": "anonymusEvent",
+  "variables": {
+    "venue_event_id": 9676
+  },
+  "query": "query anonymusEvent($venue_event_id: Int!) { ... }"
+}
+```
+
+**Full GraphQL Query:**
+```graphql
+query anonymusEvent($venue_event_id: Int!) {
+  anonymusEvent(venue_event_id: $venue_event_id) {
+    venue_event_id
+    name
+    default_image
+    address
+    cost
+    city_id
+    official
+    public
+    public_cc_event
+    private_cc_event
+    available_spots
+    spots
+    unlimited_spots
+    start_time
+    end_time
+    allowed_classes
+    allowed_sub_classes
+    restrict_makes
+    code
+    active
+    car_club {
+      name
+      car_club_id
+      owner {
+        user_id
+        driver {
+          driver_id
+          username
+        }
+      }
+    }
+    active_reservations_count
+    requires_signup_code
+    requires_payment
+    max_driver_guests
+    guests
+    guest_price
+    allow_guests
+    web_page
+    sign_up_page
+    summary
+    payment_type {
+      payment_type_id
+      type
+      description
+    }
+    payment_type_id
+    unlimited_guests
+    owner_role {
+      name
+      car_club_id
+    }
+    sponsors
+  }
+}
+```
+
+**Implementation Example (Laravel):**
+```php
+$client = new \GuzzleHttp\Client([
+    'verify' => false  // CRITICAL: Disable SSL verification
+]);
+
+$response = $client->post('https://gqlv2.parkupfrontpartners.com/', [
+    'json' => [
+        'operationName' => 'anonymusEvent',
+        'variables' => ['venue_event_id' => $eventId],
+        'query' => $graphqlQuery
+    ]
+]);
+
+$data = json_decode($response->getBody(), true);
+$event = $data['data']['anonymusEvent'] ?? null;
+```
+
+**Scraping Strategy:**
+- Latest known event ID: 9676 (as of July 2025)
+- Increment ID and check until 10 consecutive nulls
+- City ID 3 = Dallas-Fort Worth area (90% of events)
+- Most events are free (cost = 0)
+- Dates in format: "2025-07-26 20:00:00"
+
+### 9. Technical Architecture
+
+#### API-First Design
+- **Laravel API Backend**
+  - RESTful API with Laravel Sanctum
+  - GraphQL option with Lighthouse
+  - API versioning (v1, v2)
+  - OpenAPI/Swagger documentation
+  - Rate limiting per client
+  - JWT tokens for mobile apps
+
+#### Frontend Options
+**Option 1: Separate React SPA + API**
+- React 18+ with TypeScript
+- Vite for bundling
+- React Router for navigation
+- Tanstack Query for API state
+- Zustand for app state
+- Complete separation of concerns
+- Easy mobile app sharing of API
+
+**Option 2: Next.js + API**
+- Server-side rendering for SEO
+- API routes for additional endpoints
+- Better initial load performance
+- Still uses Laravel API
+
+#### Mobile Architecture
+- React Native (iOS + Android)
+- Shared API with web
+- Native features:
+  - Push notifications (FCM/APNs)
+  - Camera integration
+  - GPS/Maps
+  - Calendar integration
+  - Share sheets
+- Offline support with local SQLite
+
+#### API Endpoints Structure
+```
+/api/v1/auth/*           - Authentication
+/api/v1/users/*          - User profiles
+/api/v1/events/*         - Event CRUD
+/api/v1/events/nearby    - Geo-based search
+/api/v1/clubs/*          - Car clubs
+/api/v1/search/*         - Search endpoints
+/api/v1/notifications/*  - Push tokens, preferences
+/api/v1/feed/*           - Personalized feed
+```
+
+#### Backend Services
+- Laravel 11.x
+- PostgreSQL with PostGIS
+- Redis (caching, queues)
+- Pusher/Soketi (WebSockets)
+- S3/Cloudflare R2 (images)
+- Algolia/Meilisearch (search)
+
+#### Development Approach
+1. Build complete API first
+2. Document all endpoints
+3. Build web frontend
+4. Share API with mobile
+5. Consistent data across platforms
+
+### 10. Competitive Advantages
+
+#### Over ParkUpFront
+- Modern, fast interface
+- Better search and discovery
+- Real-time notifications
+- Photo galleries
+- Weather integration
+- Mobile app
+- Community features
+- Better organizer tools
+
+#### Unique Features
+- Car profile/garage
+- Route planning for cruises
+- Vendor marketplace
+- Knowledge base
+- Reputation system
+- Advanced RSVP management
+
+## Launch Strategy
+
+### Phase 1 - Soft Launch (Month 1-2)
+- Core platform with basic features
+- Import historical data for content
+- Invite-only beta for organizers
+- Focus on DFW area
+- Gather feedback and iterate
+
+### Phase 2 - Public Launch (Month 3-4)
+- Open registration
+- Marketing push in DFW
+- Influencer partnerships
+- Social media campaign
+- SEO optimization
+
+### Phase 3 - Expansion (Month 5-6)
+- Add more Texas cities
+- Mobile app development
+- Premium features
+- Partnership program
+- API for third parties
+
+## Success Metrics
+- 1,000 active users in first 3 months
+- 100 user-created events per month
+- 50% monthly active user rate
+- 4.5+ app store rating
+- <2 second page load times
+
+## Marketing Angles
+- "Built by car enthusiasts, for car enthusiasts"
+- "Never miss another local car meet"
+- "Your garage in your pocket"
+- "Where car culture connects"
+- Focus on community over commercialization
