@@ -16,6 +16,7 @@ class FixParkUpFrontTimezones extends Command
      */
     protected $signature = 'events:fix-parkupfront-timezones 
                             {--dry-run : Preview changes without applying them}
+                            {--force : Skip confirmation prompt}
                             {--event-id= : Fix only a specific event by ID}';
 
     /**
@@ -57,7 +58,7 @@ class FixParkUpFrontTimezones extends Command
         
         $this->info("Found {$events->count()} ParkUpFront events to check.");
         
-        if (!$dryRun && !$specificEventId) {
+        if (!$dryRun && !$specificEventId && !$this->option('force')) {
             if (!$this->confirm('Do you want to proceed with fixing these events?')) {
                 $this->info('Operation cancelled.');
                 return Command::SUCCESS;
