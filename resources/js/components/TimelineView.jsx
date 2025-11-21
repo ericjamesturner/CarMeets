@@ -1,9 +1,7 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
 import DayMap from './DayMap';
 
-const TimelineView = ({ groupedEvents, onEventClick }) => {
-    const navigate = useNavigate();
+const TimelineView = ({ groupedEvents, events, onEventClick }) => {
     // Generate hour labels from 6 AM to 11 PM
     const hours = Array.from({ length: 18 }, (_, i) => i + 6);
 
@@ -82,10 +80,12 @@ const TimelineView = ({ groupedEvents, onEventClick }) => {
         });
     };
 
-    // Handle map marker click to navigate to event
+    // Handle map marker click to open modal
     const handleMapEventClick = (event) => {
-        if (onEventClick) onEventClick();
-        navigate(`/events/${event.id}`);
+        const globalIndex = events.findIndex(e => e.id === event.id);
+        if (globalIndex !== -1 && onEventClick) {
+            onEventClick(globalIndex);
+        }
     };
 
     // Mobile vertical timeline
@@ -114,12 +114,13 @@ const TimelineView = ({ groupedEvents, onEventClick }) => {
                             <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-300 dark:bg-gray-600"></div>
                             
                             <div className="space-y-4">
-                                {day.events.sort((a, b) => new Date(a.start_time) - new Date(b.start_time)).map((event, index) => (
-                                    <Link
+                                {day.events.sort((a, b) => new Date(a.start_time) - new Date(b.start_time)).map((event, index) => {
+                                    const globalIndex = events.findIndex(e => e.id === event.id);
+                                    return (
+                                    <div
                                         key={event.id}
-                                        to={`/events/${event.id}`}
-                                        onClick={onEventClick}
-                                        className="relative flex items-start ml-10 group"
+                                        onClick={() => onEventClick(globalIndex)}
+                                        className="relative flex items-start ml-10 group cursor-pointer"
                                     >
                                         {/* Timeline dot */}
                                         <div className={`absolute -left-8 w-4 h-4 rounded-full ${getEventColor(index)} ring-4 ring-white dark:ring-gray-800`}></div>
@@ -142,8 +143,9 @@ const TimelineView = ({ groupedEvents, onEventClick }) => {
                                                 )}
                                             </div>
                                         </div>
-                                    </Link>
-                                ))}
+                                    </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
@@ -197,12 +199,12 @@ const TimelineView = ({ groupedEvents, onEventClick }) => {
                         <div className="relative mt-4 space-y-2 min-w-[800px]">
                             {day.events.map((event, index) => {
                                 const position = getEventPosition(event);
+                                const globalIndex = events.findIndex(e => e.id === event.id);
                                 return (
-                                    <Link
+                                    <div
                                         key={event.id}
-                                        to={`/events/${event.id}`}
-                                        onClick={onEventClick}
-                                        className="block relative h-16 group"
+                                        onClick={() => onEventClick(globalIndex)}
+                                        className="block relative h-16 group cursor-pointer"
                                     >
                                         <div
                                             className={`absolute h-full rounded-md ${getEventColor(index)} text-white p-2 overflow-hidden transition-all hover:scale-105 hover:shadow-lg`}
@@ -213,7 +215,7 @@ const TimelineView = ({ groupedEvents, onEventClick }) => {
                                                 {formatTime(event.start_time)} - {formatTime(event.end_time)}
                                             </div>
                                         </div>
-                                    </Link>
+                                    </div>
                                 );
                             })}
                         </div>

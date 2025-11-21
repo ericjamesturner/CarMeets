@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import TimelineView from '../components/TimelineView';
+import EventModal from '../components/EventModal';
 
 const Events = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [pagination, setPagination] = useState({});
+    const [selectedEventIndex, setSelectedEventIndex] = useState(null);
     const scrollPositionRestored = useRef(false);
     
     // Initialize from URL params first, then localStorage
@@ -82,9 +84,19 @@ const Events = () => {
         }
     }, [loading, events]);
 
-    // Save scroll position before navigating away
-    const handleEventClick = (e) => {
-        sessionStorage.setItem('eventsScrollPosition', window.scrollY.toString());
+    // Handle event click to open modal
+    const handleEventClick = (eventIndex) => {
+        setSelectedEventIndex(eventIndex);
+    };
+
+    // Handle modal close
+    const handleModalClose = () => {
+        setSelectedEventIndex(null);
+    };
+
+    // Handle modal navigation
+    const handleModalNavigate = (newIndex) => {
+        setSelectedEventIndex(newIndex);
     };
 
     const fetchEvents = async (page = null) => {
@@ -366,11 +378,12 @@ const Events = () => {
                     <p className="mt-2 text-gray-400 dark:text-gray-500">Try selecting a different date range.</p>
                 </div>
             ) : viewMode === 'timeline' ? (
-                <TimelineView groupedEvents={groupedEvents} onEventClick={handleEventClick} />
+                <TimelineView groupedEvents={groupedEvents} events={events} onEventClick={handleEventClick} />
             ) : (
                 <>
                     <div className="space-y-12">
-                        {groupedEvents.map((dayGroup) => (
+                        {groupedEvents.map((dayGroup) => {
+                            return (
                             <div key={dayGroup.date.toISOString()}>
                                 {/* Day Header */}
                                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 sticky top-16 bg-gray-50 dark:bg-gray-900 py-3 -mx-4 px-4 z-10 border-b border-gray-200 dark:border-gray-700">
@@ -379,15 +392,16 @@ const Events = () => {
                                         {dayGroup.events.length} event{dayGroup.events.length !== 1 ? 's' : ''}
                                     </span>
                                 </h2>
-                                
+
                                 {/* Events for this day */}
                                 <div className="space-y-8">
-                                    {dayGroup.events.map((event) => (
-                                        <Link
+                                    {dayGroup.events.map((event) => {
+                                        const globalIndex = events.findIndex(e => e.id === event.id);
+                                        return (
+                                        <div
                                             key={event.id}
-                                            to={`/events/${event.id}`}
-                                            onClick={handleEventClick}
-                                            className="block bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden"
+                                            onClick={() => handleEventClick(globalIndex)}
+                                            className="block bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden cursor-pointer"
                                         >
                                 {event.image ? (
                                     <img
@@ -455,11 +469,13 @@ const Events = () => {
                                         </p>
                                     )}
                                 </div>
-                            </Link>
-                                    ))}
+                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
-                        ))}
+                            );
+                        })}
                     </div>
 
                     {pagination.lastPage > 1 && (
@@ -486,6 +502,17 @@ const Events = () => {
                         </div>
                     )}
                 </>
+            )}
+
+            {/* Event Detail Modal */}
+            {selectedEventIndex !== null && events[selectedEventIndex] && (
+                <EventModal
+                    event={events[selectedEventIndex]}
+                    events={events}
+                    currentIndex={selectedEventIndex}
+                    onClose={handleModalClose}
+                    onNavigate={handleModalNavigate}
+                />
             )}
         </div>
     );
