@@ -1,17 +1,31 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import DayMap from './DayMap';
 
 const TimelineView = ({ groupedEvents, onEventClick }) => {
+    const navigate = useNavigate();
     // Generate hour labels from 6 AM to 11 PM
     const hours = Array.from({ length: 18 }, (_, i) => i + 6);
-    
+
     // Check if mobile
     const [isMobile, setIsMobile] = React.useState(window.innerWidth < 768);
-    
+
+    // Track which day's map modal is open
+    const [mapModalDay, setMapModalDay] = React.useState(null);
+
     React.useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768);
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    // Close modal on escape key
+    React.useEffect(() => {
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') setMapModalDay(null);
+        };
+        window.addEventListener('keydown', handleEscape);
+        return () => window.removeEventListener('keydown', handleEscape);
     }, []);
     
     // Calculate event position and width on timeline
@@ -68,16 +82,33 @@ const TimelineView = ({ groupedEvents, onEventClick }) => {
         });
     };
 
+    // Handle map marker click to navigate to event
+    const handleMapEventClick = (event) => {
+        if (onEventClick) onEventClick();
+        navigate(`/events/${event.id}`);
+    };
+
     // Mobile vertical timeline
     if (isMobile) {
         return (
             <div className="space-y-6">
                 {groupedEvents.map((day) => (
                     <div key={day.date.toISOString()} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-                        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
-                            {day.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                        </h2>
-                        
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                                {day.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                            </h2>
+                            <button
+                                onClick={() => setMapModalDay(day)}
+                                className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                                </svg>
+                                Map
+                            </button>
+                        </div>
+
                         {/* Vertical timeline for mobile */}
                         <div className="relative">
                             <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-300 dark:bg-gray-600"></div>
@@ -126,10 +157,21 @@ const TimelineView = ({ groupedEvents, onEventClick }) => {
         <div className="space-y-8">
             {groupedEvents.map((day) => (
                 <div key={day.date.toISOString()} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                        {day.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                    </h2>
-                    
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                            {day.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                        </h2>
+                        <button
+                            onClick={() => setMapModalDay(day)}
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                            </svg>
+                            View Map
+                        </button>
+                    </div>
+
                     {/* Timeline Grid */}
                     <div className="relative overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
                         {/* Hour markers */}
@@ -178,6 +220,36 @@ const TimelineView = ({ groupedEvents, onEventClick }) => {
                     </div>
                 </div>
             ))}
+
+            {/* Map Modal */}
+            {mapModalDay && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
+                    onClick={() => setMapModalDay(null)}
+                >
+                    <div
+                        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                {mapModalDay.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                            </h3>
+                            <button
+                                onClick={() => setMapModalDay(null)}
+                                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="p-4 h-[60vh]">
+                            <DayMap events={mapModalDay.events} onEventClick={handleMapEventClick} className="h-full" />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Services\ParkUpFrontService;
+use App\Services\GeocodingService;
 use App\Models\Event;
 use Carbon\Carbon;
 use App\Mail\NewEventImported;
@@ -32,8 +33,9 @@ class ImportNextParkUpFrontEvents extends Command
     public function handle()
     {
         $this->info('Checking for new ParkUpFront events...');
-        
+
         $service = new ParkUpFrontService();
+        $geocoder = new GeocodingService();
         $totalImported = 0;
         $totalUpdated = 0;
         $consecutiveEmpty = 0;
@@ -72,13 +74,18 @@ class ImportNextParkUpFrontEvents extends Command
             $endTime = Carbon::parse($eventData['end_time'], 'America/Chicago')->utc();
             
             // Prepare event attributes
+            $address = $eventData['address'] ?? 'TBD';
+            $city = $service->getCityName($eventData['city_id']);
+            $state = $service->getStateFromCity($eventData['city_id']);
+            $zip = '75201'; // Default Dallas zip
+
             $eventAttributes = [
                 'name' => $eventData['name'],
                 'description' => $eventData['summary'] ?? null,
-                'address' => $eventData['address'] ?? 'TBD',
-                'city' => $service->getCityName($eventData['city_id']),
-                'state' => $service->getStateFromCity($eventData['city_id']),
-                'zip' => '75201', // Default Dallas zip
+                'address' => $address,
+                'city' => $city,
+                'state' => $state,
+                'zip' => $zip,
                 'start_time' => $startTime,
                 'end_time' => $endTime,
                 'cost' => $eventData['cost'] ?? 0,
@@ -89,6 +96,17 @@ class ImportNextParkUpFrontEvents extends Command
                 'external_id' => $currentId,
                 'user_id' => $importUser->id,
             ];
+
+            // Geocode the address
+            if ($address && $address !== 'TBD') {
+                $coordinates = $geocoder->geocode($address, $city, $state, $zip);
+                if ($coordinates) {
+                    $eventAttributes['latitude'] = $coordinates['latitude'];
+                    $eventAttributes['longitude'] = $coordinates['longitude'];
+                }
+                // Respect Nominatim rate limit
+                usleep(1100000); // 1.1 seconds
+            }
             
             // Check if event already exists
             $existingEvent = Event::where('external_id', $currentId)

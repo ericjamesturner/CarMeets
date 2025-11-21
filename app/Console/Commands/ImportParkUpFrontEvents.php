@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Event;
 use App\Models\User;
+use App\Services\GeocodingService;
 use App\Services\ParkUpFrontService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -29,6 +30,7 @@ class ImportParkUpFrontEvents extends Command
     protected $description = 'Import events from ParkUpFront GraphQL API';
 
     private ParkUpFrontService $service;
+    private GeocodingService $geocoder;
     private User $importUser;
 
     /**
@@ -37,7 +39,8 @@ class ImportParkUpFrontEvents extends Command
     public function handle()
     {
         $this->service = new ParkUpFrontService();
-        
+        $this->geocoder = new GeocodingService();
+
         // Get or create a system user for imported events
         $this->importUser = User::firstOrCreate(
             ['email' => 'import@carmeets.system'],
@@ -83,13 +86,18 @@ class ImportParkUpFrontEvents extends Command
                 ->where('external_id', $eventData['venue_event_id'])
                 ->first();
 
+            $address = $eventData['address'] ?? 'TBD';
+            $city = $this->service->getCityName($eventData['city_id']);
+            $state = $this->service->getStateFromCity($eventData['city_id']);
+            $zip = '75201'; // Default Dallas zip since API doesn't provide
+
             $eventAttributes = [
                 'name' => $eventData['name'],
                 'description' => $eventData['summary'] ?? null,
-                'address' => $eventData['address'] ?? 'TBD',
-                'city' => $this->service->getCityName($eventData['city_id']),
-                'state' => $this->service->getStateFromCity($eventData['city_id']),
-                'zip' => '75201', // Default Dallas zip since API doesn't provide
+                'address' => $address,
+                'city' => $city,
+                'state' => $state,
+                'zip' => $zip,
                 'start_time' => $startTime,
                 'end_time' => $endTime,
                 'cost' => $eventData['cost'] ?? 0,
@@ -100,6 +108,17 @@ class ImportParkUpFrontEvents extends Command
                 'external_id' => $eventData['venue_event_id'],
                 'user_id' => $this->importUser->id,
             ];
+
+            // Geocode the address
+            if ($address && $address !== 'TBD') {
+                $coordinates = $this->geocoder->geocode($address, $city, $state, $zip);
+                if ($coordinates) {
+                    $eventAttributes['latitude'] = $coordinates['latitude'];
+                    $eventAttributes['longitude'] = $coordinates['longitude'];
+                }
+                // Respect Nominatim rate limit
+                usleep(1100000); // 1.1 seconds
+            }
 
             if ($existingEvent) {
                 $existingEvent->update($eventAttributes);
